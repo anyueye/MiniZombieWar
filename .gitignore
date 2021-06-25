@@ -1,0 +1,10 @@
+/UserSettings/
+/Temp/
+/Library/
+*.csproj
+/.idea/
+/Logs/
+*.sln
+/obj/
+/Assets/UnityGameFramework
+/Assets/UnityGameFramework.mate
