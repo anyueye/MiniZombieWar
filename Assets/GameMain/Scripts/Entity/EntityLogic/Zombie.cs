@@ -60,11 +60,6 @@ public class Pursuing : FsmState<Zombie>
         {
             ChangeState<Wandering>(fsm);
         }
-        if (Vector3.Distance(fsm.Owner.CachedTransform.position,fsm.Owner.target.CachedTransform.position)<=fsm.Owner.ZombieData.AttackRange)
-        {
-            ChangeState<Attacking>(fsm);
-        }
-
        
 
         var zombiePos = fsm.Owner.CachedTransform.position;
@@ -79,42 +74,42 @@ public class Pursuing : FsmState<Zombie>
 /// <summary>
 /// 攻击状态，如果目标在攻击范围内攻击，否则切换到追击状态
 /// </summary>
-public class Attacking : FsmState<Zombie>
-{
-    protected override void OnInit(IFsm<Zombie> fsm)
-    {
-        base.OnInit(fsm);
-        timer = Time.time;
-    }
-
-    private float timer = 0;
-    //每次进入攻击状态，重置攻击间隔
-    protected override void OnEnter(IFsm<Zombie> fsm)
-    {
-        base.OnEnter(fsm);
-        
-    }
-
-    //根据攻击间隔 持续攻击，脱离攻击范围则切换到追击
-    protected override void OnUpdate(IFsm<Zombie> fsm, float elapseSeconds, float realElapseSeconds)
-    {
-        base.OnUpdate(fsm, elapseSeconds, realElapseSeconds);
-        if (fsm.Owner.target==null)
-        {
-            ChangeState<Wandering>(fsm);
-        }
-        if (Vector3.Distance(fsm.Owner.CachedTransform.position,fsm.Owner.target.CachedTransform.position)>fsm.Owner.ZombieData.AttackRange)
-        {
-            ChangeState<Pursuing>(fsm);
-        }
-
-        if (Time.time> timer+fsm.Owner.ZombieData.AtkInterval)
-        {
-            fsm.Owner.target.ApplyDamage(fsm.Owner,fsm.Owner.ZombieData.Attack);
-            timer = Time.time;
-        }
-    }
-}
+// public class Attacking : FsmState<Zombie>
+// {
+//     protected override void OnInit(IFsm<Zombie> fsm)
+//     {
+//         base.OnInit(fsm);
+//         timer = Time.time;
+//     }
+//
+//     private float timer = 0;
+//     //每次进入攻击状态，重置攻击间隔
+//     protected override void OnEnter(IFsm<Zombie> fsm)
+//     {
+//         base.OnEnter(fsm);
+//         
+//     }
+//
+//     //根据攻击间隔 持续攻击，脱离攻击范围则切换到追击
+//     protected override void OnUpdate(IFsm<Zombie> fsm, float elapseSeconds, float realElapseSeconds)
+//     {
+//         base.OnUpdate(fsm, elapseSeconds, realElapseSeconds);
+//         if (fsm.Owner.target==null)
+//         {
+//             ChangeState<Wandering>(fsm);
+//         }
+//         if (Vector3.Distance(fsm.Owner.CachedTransform.position,fsm.Owner.target.CachedTransform.position)>fsm.Owner.ZombieData.AttackRange)
+//         {
+//             ChangeState<Pursuing>(fsm);
+//         }
+//
+//         if (Time.time> timer+fsm.Owner.ZombieData.AtkInterval)
+//         {
+//             fsm.Owner.target.ApplyDamage(fsm.Owner,fsm.Owner.ZombieData.Attack);
+//             timer = Time.time;
+//         }
+//     }
+// }
 
 public class Zombie : TargetableObject
 {
@@ -125,7 +120,7 @@ public class Zombie : TargetableObject
     
     public override ImpactData GetImpactData()
     {
-        throw new System.NotImplementedException();
+        return new ImpactData(m_ZombieData.Hp, m_ZombieData.Attack, 0);
     }
 
     protected override void OnShow(object userData)
@@ -139,7 +134,8 @@ public class Zombie : TargetableObject
 
         FsmState<Zombie>[] zombieStates =
         {
-            new Wandering(), new Pursuing(), new Attacking()
+            new Wandering(),
+            new Pursuing()
         };
         zombieFsm = MyGameEntry.Fsm.CreateFsm(EntityId.ToString(), this, zombieStates);
         zombieFsm.Start<Wandering>();

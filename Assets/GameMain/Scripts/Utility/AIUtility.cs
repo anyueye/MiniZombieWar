@@ -20,4 +20,45 @@ public class AIUtility
         target = nearestTaget;
         return distance;
     }
+
+    public static void PerformCollision(TargetableObject entity, Entity other)
+    {
+        if (entity == null || other == null)
+        {
+            return;
+        }
+        TargetableObject target = other as TargetableObject;
+        if (target != null)
+        {
+            ImpactData entityImpactData = entity.GetImpactData();
+            ImpactData targetImpactData = target.GetImpactData();
+            
+            int entityDamageHP = CalcDamageHP(targetImpactData.Attack, entityImpactData.Defense);
+            int targetDamageHP = CalcDamageHP(entityImpactData.Attack, targetImpactData.Defense);
+
+            entity.ApplyDamage(target,entityDamageHP);
+            target.ApplyDamage(entity, targetDamageHP);
+        }
+    }
+
+    private static int CalcDamageHP(int attack, int defense)
+    {
+        if (attack<=0)
+        {
+            return 0;
+        }
+
+        if (defense<0)
+        {
+            defense = 0;
+        }
+
+        var result = attack - defense;
+        if (result<0)
+        {
+            result = 0;
+        }
+
+        return result;
+    }
 }

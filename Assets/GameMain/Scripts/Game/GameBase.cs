@@ -22,13 +22,13 @@ public class GameBase
             Position = Vector3.zero,
         });
 
-        for (int i = 0; i < 10; i++)
+        // for (int i = 0; i < 10; i++)
+        // {
+        MyGameEntry.Entity.ShowEnemy(new ZombieData(MyGameEntry.Entity.GenerateSerialId(),20000)
         {
-            MyGameEntry.Entity.ShowEnemy(new ZombieData(MyGameEntry.Entity.GenerateSerialId(),20000)
-            {
-                Position = new Vector3(Random.Range(-2f,2f),Random.Range(5f,4f),0),
-            });
-        }
+            Position = new Vector3(Random.Range(-1f,1f),Random.Range(3f,4f),0),
+        });
+        // }
     }
 
     private void OnShowEntityFailure(object sender, GameEventArgs e)

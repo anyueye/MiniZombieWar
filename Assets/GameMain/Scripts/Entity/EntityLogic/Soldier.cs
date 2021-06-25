@@ -11,70 +11,108 @@ public class PreparingState : FsmState<Soldier>
     protected override void OnUpdate(IFsm<Soldier> fsm, float elapseSeconds, float realElapseSeconds)
     {
         base.OnUpdate(fsm, elapseSeconds, realElapseSeconds);
-        ChangeState<PrecisionState>(fsm);
+        if (fsm.Owner._rigidbody.velocity.magnitude>0)
+        {
+            ChangeState<RunningState>(fsm);
+        }
     }
 }
 
 /// <summary>
-/// 跑路状态，命中率降低
+/// 跑路状态，会掉血
 /// </summary>
 public class RunningState : FsmState<Soldier>
 {
-    private Weapon m_Weapon;
-    private Soldier _soldier;
 
-    protected override void OnEnter(IFsm<Soldier> solider)
+
+
+    protected override void OnEnter(IFsm<Soldier> fsm)
     {
-        base.OnEnter(solider);
-        _soldier = solider.Owner;
-        m_Weapon = _soldier.m_Weapon;
+        base.OnEnter(fsm);
+        fsm.Owner._Sprite.color=Color.white;
     }
 
     protected override void OnUpdate(IFsm<Soldier> solider, float elapseSeconds, float realElapseSeconds)
     {
         base.OnUpdate(solider, elapseSeconds, realElapseSeconds);
-        if (_soldier._rigidbody.velocity.magnitude < _soldier._precisionThreshold)
+        var runSpeed = solider.Owner._rigidbody.velocity.magnitude;
+        if (runSpeed>0.7f)
         {
-            ChangeState<PrecisionState>(solider);
+            ChangeState<AccumulateState>(solider);
         }
+    }
+}
 
-        if (m_Weapon) m_Weapon.hitRate = m_Weapon.weaponObject.dynamicSector;
+public class AccumulateState : FsmState<Soldier>
+{
+    private float accumulateTime => 1.5f;
+
+    private float timer;
+    protected override void OnEnter(IFsm<Soldier> fsm)
+    {
+        base.OnEnter(fsm);
+        fsm.Owner._Sprite.color=Color.green;
+        timer = Time.time;
+    }
+
+    protected override void OnUpdate(IFsm<Soldier> fsm, float elapseSeconds, float realElapseSeconds)
+    {
+        base.OnUpdate(fsm, elapseSeconds, realElapseSeconds);
+        var runSpeed = fsm.Owner._rigidbody.velocity.magnitude;
+        if (runSpeed <=0.7f)
+        {
+            ChangeState<RunningState>(fsm);
+        }
+        if (Time.time>timer+accumulateTime)
+        {
+            ChangeState<RushState>(fsm);
+        }
     }
 }
 /// <summary>
-/// 设计状态，命中率提高
+/// 冲锋状态 无敌
 /// </summary>
-public class PrecisionState : FsmState<Soldier>
+public class RushState : FsmState<Soldier>
 {
-    private Weapon m_Weapon;
-    private Soldier _soldier;
+    private float exitTime => 0.5f;
 
-    protected override void OnEnter(IFsm<Soldier> solider)
+    private float timer;
+    private bool rushing;
+    protected override void OnEnter(IFsm<Soldier> fsm)
     {
-        base.OnEnter(solider);
-        _soldier = solider.Owner;
-        m_Weapon = _soldier.m_Weapon;
+        base.OnEnter(fsm);
+        fsm.Owner._Sprite.color=new Color(0f, 0.02f, 1f);
+        rushing = true;
     }
 
-    protected override void OnUpdate(IFsm<Soldier> solider, float elapseSeconds, float realElapseSeconds)
+    protected override void OnUpdate(IFsm<Soldier> fsm, float elapseSeconds, float realElapseSeconds)
     {
-        base.OnUpdate(solider, elapseSeconds, realElapseSeconds);
-        if (solider.Owner._rigidbody.velocity.magnitude >= _soldier._precisionThreshold)
+        base.OnUpdate(fsm, elapseSeconds, realElapseSeconds);
+        
+        var runSpeed = fsm.Owner._rigidbody.velocity.magnitude;
+        if (runSpeed <=0.7f&&rushing)
         {
-            ChangeState<RunningState>(solider);
+            rushing = false;
+            timer = Time.time;
         }
 
-        if (!m_Weapon) return;
-        float t = _soldier._rigidbody.velocity.magnitude / _soldier._precisionThreshold;
-        m_Weapon.hitRate = Mathf.Lerp(m_Weapon.weaponObject.staticSector, m_Weapon.weaponObject.dynamicSector, t);
+        if (!rushing)
+        {
+            if (Time.time>timer+exitTime)
+            {
+                ChangeState<RunningState>(fsm);
+            }
+        }
     }
 }
+
 
 
 public class Soldier : TargetableObject
 {
     public IFsm<Soldier> soldierFsm;
-    public Weapon m_Weapon;
+    public SpriteRenderer _Sprite;
+    
     public Rigidbody2D _rigidbody;
     public float _precisionThreshold => 0.2f;
 
@@ -87,7 +125,9 @@ public class Soldier : TargetableObject
 
     public override ImpactData GetImpactData()
     {
-        throw new System.NotImplementedException();
+        return soldierFsm.GetState<RushState>().Equals(soldierFsm.CurrentState) 
+            ? new ImpactData(m_SoldierData.Hp, int.MaxValue, int.MaxValue) 
+            : new ImpactData(m_SoldierData.Hp, 10, 0);
     }
 
 
@@ -100,17 +140,13 @@ public class Soldier : TargetableObject
             return;
         }
 
-        FsmState<Soldier>[] soliderStates =
-        {
-            new PreparingState(), new RunningState(), new PrecisionState()
-        };
-        soldierFsm = MyGameEntry.Fsm.CreateFsm(EntityId.ToString(), this, soliderStates);
-        soldierFsm.Start<PreparingState>();
+        _Sprite = GetComponentInChildren<SpriteRenderer>();
 
+        soldierFsm = MyGameEntry.Fsm.CreateFsm(this,new PreparingState(),new RunningState(),new AccumulateState(),new RushState());
+        soldierFsm.Start<PreparingState>();
         _rigidbody = GetComponent<Rigidbody2D>();
         _rigidbody.drag = _currWeight;
-
-        MyGameEntry.Entity.ShowWeapon(m_SoldierData.WeaponData);
+        
         MyGameEntry.HPBar.ShowHPBar(this,m_SoldierData.Hp,m_SoldierData.MaxHp,0);
     }
 
@@ -121,37 +157,11 @@ public class Soldier : TargetableObject
         base.OnDead(attacker);
     }
 
-    protected override void OnAttached(EntityLogic childEntity, Transform parentTransform, object userData)
-    {
-        base.OnAttached(childEntity, parentTransform, userData);
-        if (childEntity is Weapon m)
-        {
-            m_Weapon = m;
-            return;
-        }
-    }
-
-
+    
     protected override void OnUpdate(float elapseSeconds, float realElapseSeconds)
     {
         base.OnUpdate(elapseSeconds, realElapseSeconds);
         
-        float maxDis=AIUtility.GetNearset("Enemy", this, out var t);
-        
-        if (maxDis<5f)
-        {
-            target = t;
-        }
-        
-        if (target)
-        {
-            CachedTransform.up = target.CachedTransform.position - transform.position;
-            TryAttack();
-        }
-        else
-        {
-            CachedTransform.up = _rigidbody.velocity.normalized;
-        }
     }
     
     
@@ -168,11 +178,7 @@ public class Soldier : TargetableObject
         Vector2 curDirection = _rigidbody.velocity.normalized;
         _rigidbody.velocity = curSpeed * curDirection;
     }
-
-    private void TryAttack()
-    {
-        m_Weapon.TryAttack(target);
-    }
+    
     public void Pushed(Vector2 force)
     {
         _rigidbody.AddForce(force, ForceMode2D.Impulse);

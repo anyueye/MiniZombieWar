@@ -43,23 +43,22 @@ public abstract class TargetableObject:Entity
         MyGameEntry.HPBar.HideHPBar(this);
     }
 
-    // private void OnTriggerEnter2D(Collider2D other)
-    // {
-    //     Entity entity = other.GetComponent<Entity>();
-    //     if (entity==null)
-    //     {
-    //         return;
-    //     }
-    //
-    //     if (entity is TargetableObject && entity.EntityId>=EntityId)
-    //     {
-    //         return;
-    //     }
-    //
-    //     var e = entity as TargetableObject;
-    //     if (e!=null)
-    //     {
-    //         target = e;
-    //     }
-    // }
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        Entity entity = other.GetComponent<Entity>();
+        if (entity==null)
+        {
+            return;
+        }
+    
+        if (entity is TargetableObject && entity.EntityId>=EntityId)
+        {
+            return;
+        }
+    
+        // var e = entity as Soldier;
+        // if (e == null) return;
+        // target = e;
+        AIUtility.PerformCollision(this,entity);
+    }
 }
